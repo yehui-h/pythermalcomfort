@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``JOS3`` superficial-vein temperatures being written onto the first 12
+  body segments (head through left thigh) instead of the 12 limb segments.
+  Head, neck, chest, back, and pelvis have no superficial vein, and
+  ``dict_results()`` no longer emits columns for them.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.

@@ -1959,3 +1959,46 @@ def test_dict_results_subset_variables_align_with_results() -> None:
     assert flat["t_muscle_pelvis"][-1] == structured.t_muscle.pelvis[-1]
     assert flat["t_fat_head"][-1] == structured.t_fat.head[-1]
     assert flat["t_fat_pelvis"][-1] == structured.t_fat.pelvis[-1]
+
+
+def test_superficial_vein_maps_to_limb_segments() -> None:
+    """Superficial veins exist only on the 12 limb segments.
+
+    The 12 temperatures were zipped onto the first 12 body parts, so the head
+    carried the left-shoulder value and the feet were empty.
+    """
+    model = JOS3(height=1.7, weight=60, age=30)
+    model.to = 28
+    model.rh = 40
+    model.v = 0.1
+    model.par = 1.0
+    model.simulate(2)
+
+    limb_segments = [
+        "left_shoulder",
+        "left_arm",
+        "left_hand",
+        "right_shoulder",
+        "right_arm",
+        "right_hand",
+        "left_thigh",
+        "left_leg",
+        "left_foot",
+        "right_thigh",
+        "right_leg",
+        "right_foot",
+    ]
+    absent_segments = ["head", "neck", "chest", "back", "pelvis"]
+    expected = np.round(model.t_superficial_vein, 2)
+
+    flat = model.dict_results()
+    structured = model.results()
+
+    assert len(expected) == len(limb_segments)
+    for name, value in zip(limb_segments, expected, strict=True):
+        assert getattr(structured.t_superficial_vein, name)[-1] == pytest.approx(value)
+        assert flat[f"t_superficial_vein_{name}"][-1] == pytest.approx(value)
+
+    for name in absent_segments:
+        assert getattr(structured.t_superficial_vein, name)[-1] is None
+        assert f"t_superficial_vein_{name}" not in flat
