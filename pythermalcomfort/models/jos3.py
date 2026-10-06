@@ -231,7 +231,7 @@ class JOS3:
     t_skin_set :
         skin set point temperature (each body part) [°C]
     t_superficial_vein :
-        superficial vein temperature (each body part) [°C]
+        superficial vein temperature (12 limb segments) [°C]
     t_vein :
         vein temperature (each body part) [°C]
     tdb :
@@ -1093,7 +1093,14 @@ class JOS3:
             t_cb=round(self.t_cb, 2),
             t_artery=pass_values_to_jos3_body_parts(self.t_artery),
             t_vein=pass_values_to_jos3_body_parts(self.t_vein),
-            t_superficial_vein=pass_values_to_jos3_body_parts(self.t_superficial_vein),
+            # Superficial veins exist only on the 12 limb segments,
+            # in VINDEX["sfvein"] order.
+            t_superficial_vein=pass_values_to_jos3_body_parts(
+                self.t_superficial_vein,
+                body_parts=[
+                    JOS3BodyParts.get_attribute_names()[i] for i in VINDEX["sfvein"]
+                ],
+            ),
             t_muscle=pass_values_to_jos3_body_parts(
                 self.t_muscle,
                 body_parts=["head", "pelvis"],
@@ -1263,7 +1270,13 @@ class JOS3:
                     keys = [key]  # str is iter. Convert to list without suffix
                     indices = None
                 else:
-                    if check_word_contain(key, "sve", "sfv", "superficialvein"):
+                    if check_word_contain(
+                        key,
+                        "sve",
+                        "sfv",
+                        "superficialvein",
+                        "superficial_vein",
+                    ):
                         indices = list(VINDEX["sfvein"])
                     elif check_word_contain(key, "ms", "muscle"):
                         indices = list(VINDEX["muscle"])
