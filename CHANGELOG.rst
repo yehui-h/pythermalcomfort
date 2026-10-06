@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed ``JOS3`` superficial-vein temperatures being written onto the first 12
+  body segments (head through left thigh) instead of the 12 limb segments.
+  Head, neck, chest, back, and pelvis have no superficial vein, and
+  ``dict_results()`` no longer emits columns for them.
+
 4.8.0 (2026-10-31)
 ------------------
 
