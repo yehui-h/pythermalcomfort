@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``discomfort_index`` docstring example. At 30 °C and 60 % RH the
+  index is 26.6 ("More than 50% feels discomfort"), not 27.3 ("Most of the
+  population feels discomfort").
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
