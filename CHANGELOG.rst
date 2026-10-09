@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``discomfort_index`` docstring example. At 30 °C and 60 % RH the
+  index is 26.6 ("More than 50% feels discomfort"), not 27.3 ("Most of the
+  population feels discomfort").
 * Fixed ``work_capacity_hothaps`` and ``work_capacity_dunne`` rejecting a
   ``WorkIntensity`` member (e.g. ``WorkIntensity.MODERATE``) as ``work_intensity`` with
   "must be one of", while the same value as a string worked
