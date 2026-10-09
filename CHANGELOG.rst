@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``JOS3`` superficial-vein temperatures being written onto the first 12
+  body segments (head through left thigh) instead of the 12 limb segments.
+  Head, neck, chest, back, and pelvis have no superficial vein, and
+  ``dict_results()`` no longer emits columns for them.
 * Fixed ``work_capacity_hothaps`` and ``work_capacity_dunne`` rejecting a
   ``WorkIntensity`` member (e.g. ``WorkIntensity.MODERATE``) as ``work_intensity`` with
   "must be one of", while the same value as a string worked
