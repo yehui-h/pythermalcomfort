@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``discomfort_index`` docstring example. At 30 °C and 60 % RH the
+  index is 26.6 ("More than 50% feels discomfort"), not 27.3 ("Most of the
+  population feels discomfort").
+
 4.8.0 (2026-10-31)
 ------------------
 
