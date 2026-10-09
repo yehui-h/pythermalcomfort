@@ -536,22 +536,6 @@ def error_signals(err_sk=0.0):
     return warm_signal_sum, cold_signal_sum
 
 
-def tetens(x: float) -> float:
-    """Calculate saturated vapor pressure using Tetens equation [kPa].
-
-    Parameters
-    ----------
-    x : float
-        Temperature [°C].
-
-    Returns
-    -------
-    float
-        Saturated vapor pressure [kPa].
-    """
-    return 0.61078 * 10 ** (7.5 * x / (x + 237.3))
-
-
 def evaporation(
     err_cr,
     err_sk,
