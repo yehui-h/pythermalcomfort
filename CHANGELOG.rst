@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``discomfort_index`` docstring example. At 30 °C and 60 % RH the
+  index is 26.6 ("More than 50% feels discomfort"), not 27.3 ("Most of the
+  population feels discomfort").
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
