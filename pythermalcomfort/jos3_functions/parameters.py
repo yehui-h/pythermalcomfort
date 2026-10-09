@@ -13,7 +13,6 @@ name, meaning, and unit. The resulting documentation string can be displayed or 
 for user reference.
 """
 
-import re
 import textwrap
 from dataclasses import dataclass
 from typing import ClassVar
@@ -445,17 +444,6 @@ def show_out_param_docs():
 #         local_clo_dict[key] = value
 #
 #     return local_clo_dict
-
-
-def add_prompt_to_code(code: str, prompt: str = ">>> ") -> str:
-    lines = code.strip().split("\n")
-    result = []
-    for line in lines:
-        if re.match(r"^\s*#", line):  # If it's a comment line
-            result.append(line)
-        else:
-            result.append(prompt + line)
-    return "\n".join(result)
 
 
 # This dictionary contains the local and the whole body clothing insulation of typical clothing ensemble.
