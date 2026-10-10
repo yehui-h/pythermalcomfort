@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``two_nodes_gagge`` docstring example. At 25 °C, 50 % RH, 0.5 clo
+  and 1.2 met, skin wettedness is 0.12, not 100.0. The array case returns an
+  evaporative heat loss of 16.17 W/m2, not 100.0.
 * Fixed ``work_capacity_hothaps`` and ``work_capacity_dunne`` rejecting a
   ``WorkIntensity`` member (e.g. ``WorkIntensity.MODERATE``) as ``work_intensity`` with
   "must be one of", while the same value as a string worked
