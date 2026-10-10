@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``two_nodes_gagge`` docstring example. At 25 °C, 50 % RH, 0.5 clo
+  and 1.2 met, skin wettedness is 0.12, not 100.0. The array case returns an
+  evaporative heat loss of 16.17 W/m2, not 100.0.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
