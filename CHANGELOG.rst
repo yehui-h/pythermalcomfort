@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``two_nodes_gagge`` docstring example. At 25 °C, 50 % RH, 0.5 clo
+  and 1.2 met, skin wettedness is 0.12, not 100.0. The array case returns an
+  evaporative heat loss of 16.17 W/m2, not 100.0.
+
 4.8.0 (2026-10-31)
 ------------------
 
