@@ -55,3 +55,22 @@ def test_humidex_masterson() -> None:
 
     result = humidex(tdb=31, rh=55, model="masterson")
     assert math.isclose(result.humidex, 39.3, abs_tol=0.01)
+
+
+def test_humidex_docstring_example() -> None:
+    """The published example must match the values the function returns."""
+    scalar = humidex(tdb=25, rh=50)
+    assert scalar.humidex == pytest.approx(28.2)
+    assert scalar.discomfort == "Little or no discomfort"
+
+    array = humidex(tdb=[25, 30], rh=[50, 60], round_output=False)
+    assert array.humidex == pytest.approx([28.22703741, 38.55535958])
+    assert array.discomfort.tolist() == [
+        "Little or no discomfort",
+        "Evident discomfort",
+    ]
+
+    example = humidex.__doc__.split("Examples", 1)[1]
+    assert "[28.22703741, 38.55535958]" in example
+    assert "39.1" not in example
+    assert "Evident discomfort" in example
