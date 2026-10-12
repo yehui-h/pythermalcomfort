@@ -632,6 +632,10 @@ class GaggeTwoNodesSleep(AutoStrMixin):
 class UseFansHeatwaves(AutoStrMixin):
     """Dataclass to represent the results of using fans during heatwaves.
 
+    The four heat-strain flags are booleans. When ``limit_inputs`` is True and
+    an input is outside the applicability limits, each of those flags is
+    ``nan``.
+
     Attributes
     ----------
     e_skin : float or list of floats
