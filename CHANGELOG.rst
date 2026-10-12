@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``use_fans_heatwaves`` so the heat-strain flags (``heat_strain``,
+  ``heat_strain_blood_flow``, ``heat_strain_w``, and ``heat_strain_sweating``)
+  stay boolean, as ``UseFansHeatwaves`` documents. Valid results are ``True``
+  or ``False``; inputs outside the applicability limits still yield ``nan``.
+  Previously the default path returned ``0.0`` / ``1.0``, and
+  ``limit_inputs=False`` with ``round_output=True`` raised ``UFuncTypeError``
+  because ``numpy.around`` was applied to those flags.
 * Removed the ``temp_core_neutral`` keyword argument of ``two_nodes_gagge_sleep``. The
   model always derived core temperature from the Yan et al. (2022) time polynomial and
   ignored the value passed. Passing it now raises ``TypeError`` instead of being
@@ -46,7 +53,6 @@ Unreleased
   categories. UTCI and Heat Index values must be in °C. Column names, labels and colors
   can be overridden
   (`#458 <https://github.com/pythermalcomfort/pythermalcomfort/issues/458>`_).
-
 4.7.0 (2026-10-27)
 ------------------
 
