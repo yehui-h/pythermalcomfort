@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``ankle_draft`` and ``vertical_tmp_grad_ppd`` so ``acceptability``
+  stays boolean, as ``AnkleDraft`` and ``VerticalTGradPPD`` document. Valid
+  results are ``True`` or ``False``; inputs outside the applicability limits
+  still yield ``nan``. Previously the default path returned ``0.0`` / ``1.0``.
 * Removed the ``temp_core_neutral`` keyword argument of ``two_nodes_gagge_sleep``. The
   model always derived core temperature from the Yan et al. (2022) time polynomial and
   ignored the value passed. Passing it now raises ``TypeError`` instead of being
@@ -46,7 +50,6 @@ Unreleased
   categories. UTCI and Heat Index values must be in °C. Column names, labels and colors
   can be overridden
   (`#458 <https://github.com/pythermalcomfort/pythermalcomfort/issues/458>`_).
-
 4.7.0 (2026-10-27)
 ------------------
 
