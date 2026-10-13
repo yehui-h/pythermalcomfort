@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``ankle_draft`` and ``vertical_tmp_grad_ppd`` so ``acceptability``
+  stays boolean, as ``AnkleDraft`` and ``VerticalTGradPPD`` document. Valid
+  results are ``True`` or ``False``; inputs outside the applicability limits
+  still yield ``nan``. Previously the default path returned ``0.0`` / ``1.0``.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``

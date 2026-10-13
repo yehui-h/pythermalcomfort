@@ -96,3 +96,91 @@ def test_ankle_draft_limit_inputs_true_still_warns_and_nans() -> None:
     with pytest.warns(UserWarning):
         result = ankle_draft(50, 25, 0.1, 50, 1.2, 0.5, 0.1)
     assert np.isnan(result.ppd_ad)
+
+
+def test_ankle_draft_scalar_acceptability_is_bool() -> None:
+    """Valid scalar inputs return Python True or False."""
+    # ppd_ad is 18.5 at v_ankle=0.3 and 24.2 at v_ankle=0.5 (threshold is 20).
+    acceptable = ankle_draft(
+        tdb=25, tr=25, vr=0.2, rh=50, met=1.2, clo=0.5, v_ankle=0.3
+    )
+    assert acceptable.acceptability is True
+
+    unacceptable = ankle_draft(
+        tdb=25, tr=25, vr=0.1, rh=50, met=1.2, clo=0.5, v_ankle=0.5
+    )
+    assert unacceptable.acceptability is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        bypass = ankle_draft(
+            tdb=25,
+            tr=25,
+            vr=0.1,
+            rh=50,
+            met=1.2,
+            clo=0.5,
+            v_ankle=0.1,
+            limit_inputs=False,
+        )
+    assert bypass.acceptability is True
+
+
+def test_ankle_draft_array_acceptability_is_bool() -> None:
+    """Array inputs return an object array whose entries are True or False."""
+    result = ankle_draft(
+        tdb=25,
+        tr=25,
+        vr=0.1,
+        rh=50,
+        met=1.2,
+        clo=0.5,
+        v_ankle=[0.1, 0.5],
+    )
+    assert isinstance(result.acceptability, np.ndarray)
+    assert result.acceptability.dtype == object
+    assert result.acceptability[0] is True
+    assert result.acceptability[1] is False
+
+    # A length-1 list stays an array; it is not unwrapped to a scalar.
+    single = ankle_draft(
+        tdb=[25],
+        tr=[25],
+        vr=[0.1],
+        rh=[50],
+        met=[1.2],
+        clo=[0.5],
+        v_ankle=[0.1],
+    )
+    assert isinstance(single.acceptability, np.ndarray)
+    assert single.acceptability.shape == (1,)
+    assert single.acceptability.dtype == object
+    assert single.acceptability[0] is True
+
+
+def test_ankle_draft_mixed_acceptability_keeps_bool_and_nan() -> None:
+    """Only the out-of-range row becomes nan; valid rows stay True or False."""
+    with pytest.warns(UserWarning, match="'tdb'"):
+        result = ankle_draft(
+            tdb=[25, 25, 50],
+            tr=25,
+            vr=0.1,
+            rh=50,
+            met=1.2,
+            clo=0.5,
+            v_ankle=[0.1, 0.5, 0.1],
+        )
+
+    assert result.acceptability.dtype == object
+    assert result.acceptability[0] is True
+    assert result.acceptability[1] is False
+    assert np.isnan(result.acceptability[2])
+    assert np.isfinite(result.ppd_ad[0])
+    assert np.isfinite(result.ppd_ad[1])
+    assert np.isnan(result.ppd_ad[2])
+
+    with pytest.warns(UserWarning, match="'tdb'"):
+        outside = ankle_draft(
+            tdb=50, tr=25, vr=0.1, rh=50, met=1.2, clo=0.5, v_ankle=0.1
+        )
+    assert outside.acceptability is np.nan
