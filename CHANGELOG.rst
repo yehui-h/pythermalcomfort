@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``phs`` docstring example for chained simulations. With
+  ``round_output=False``, a 60-minute run at 40 °C and 50 % RH returns a rectal
+  temperature of 37.84 °C, not 37.8, and the following 60 minutes return 38.53 °C,
+  not 38.5.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
