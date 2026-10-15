@@ -4,6 +4,8 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``pmv_a`` docstring example. The return class is ``APMV`` and this
+  example's ``a_pmv`` is 0.71, not an ``AdaptivePMV`` of 0.74.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
