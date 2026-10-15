@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``use_fans_heatwaves`` so the heat-strain flags (``heat_strain``,
+  ``heat_strain_blood_flow``, ``heat_strain_w``, and ``heat_strain_sweating``)
+  stay boolean, as ``UseFansHeatwaves`` documents. Valid results are ``True``
+  or ``False``; inputs outside the applicability limits still yield ``nan``.
+  Previously the default path returned ``0.0`` / ``1.0``, and
+  ``limit_inputs=False`` with ``round_output=True`` raised ``UFuncTypeError``
+  because ``numpy.around`` was applied to those flags.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
