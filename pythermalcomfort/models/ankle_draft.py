@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from pythermalcomfort._internal.ashrae55 import _check_ashrae55_compliance
+from pythermalcomfort._internal.validation import _finalize_scalar_or_array
 from pythermalcomfort.classes_input import AnkleDraftInputs, NumericInput
 from pythermalcomfort.classes_return import AnkleDraft
 from pythermalcomfort.models.pmv_ppd_ashrae import pmv_ppd_ashrae
@@ -133,7 +134,9 @@ def ankle_draft(
         * 100,
         1,
     )
-    acceptability = ppd_val <= 20
+    # Object dtype, same as pmv_ppd_ashrae compliance, so the NaN mask below
+    # cannot promote True/False to float.
+    acceptability = np.asarray(ppd_val <= 20, dtype=object)
 
     if limit_inputs:
         tdb_valid, tr_valid, v_valid, met_valid, clo_valid, v_limited = (
@@ -162,5 +165,8 @@ def ankle_draft(
         )
         ppd_val = np.where(all_valid, ppd_val, np.nan)
         acceptability = np.where(all_valid, acceptability, np.nan)
+
+    # Scalars become Python bool or nan. Arrays stay object arrays of bool/nan.
+    acceptability = _finalize_scalar_or_array(acceptability)
 
     return AnkleDraft(ppd_ad=ppd_val, acceptability=acceptability)

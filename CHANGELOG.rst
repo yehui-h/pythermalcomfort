@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``ankle_draft`` and ``vertical_tmp_grad_ppd`` so ``acceptability``
+  stays boolean, as ``AnkleDraft`` and ``VerticalTGradPPD`` document. Valid
+  results are ``True`` or ``False``; inputs outside the applicability limits
+  still yield ``nan``. Previously the default path returned ``0.0`` / ``1.0``.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
