@@ -16,6 +16,7 @@ from pythermalcomfort.jos3_functions.construction import (
 )
 from pythermalcomfort.jos3_functions.matrix import (
     IDICT,
+    INDEX,
     LAYER_NAMES,
     NUM_NODES,
     index_by_layer,
@@ -238,6 +239,40 @@ def test_jos3_class() -> None:
     # Test with value out of range
     with pytest.raises(ValueError):
         JOS3(fat=91)
+
+
+def test_t_core_assignment_updates_only_core_nodes() -> None:
+    """Assigning t_core writes core nodes and leaves every other node unchanged."""
+    model = JOS3(height=1.94, weight=82, age=75, sex="male")
+    before = model._t_body.copy()
+    core_setpoint = model.cr_set_point.copy()
+    other = np.ones(before.shape, dtype=bool)
+    other[INDEX["core"]] = False
+
+    copied = model.t_core.copy()
+    copied[:] = 30.0
+    assert not np.allclose(model.t_core, 30.0)
+
+    model.t_core = 30.0
+    assert np.allclose(model.t_core, 30.0)
+    assert np.array_equal(model._t_body[other], before[other])
+    assert np.array_equal(model.cr_set_point, core_setpoint)
+
+    values = np.linspace(35.0, 36.6, 17)
+    model.t_core = values
+    assert np.allclose(model.t_core, values)
+
+    by_part = dict(
+        zip(
+            JOS3BodyParts.get_attribute_names(),
+            np.linspace(36.0, 37.6, 17),
+            strict=True,
+        )
+    )
+    model.t_core = by_part
+    assert np.allclose(model.t_core, list(by_part.values()))
+    assert np.array_equal(model._t_body[other], before[other])
+    assert np.array_equal(model.cr_set_point, core_setpoint)
 
 
 def test_body_parameters() -> None:

@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* ``JOS3.t_core`` can now be assigned the same way as ``JOS3.t_skin``: a scalar,
+  a 17-element sequence, or a dict of body parts. Both properties return copies,
+  so in-place writes such as ``model.t_core[:] = x`` do not change the model
+  (`#481 <https://github.com/pythermalcomfort/pythermalcomfort/issues/481>`_).
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.
