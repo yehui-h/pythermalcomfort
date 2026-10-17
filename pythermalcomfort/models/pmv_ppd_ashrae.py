@@ -235,7 +235,11 @@ def pmv_ppd_ashrae(
         pmv_array = np.where(all_valid, pmv_array, np.nan)
         ppd_array = np.where(all_valid, ppd_array, np.nan)
         compliance_array = np.where(all_valid, compliance_array, np.nan)
-        compliance_array = _finalize_scalar_or_array(compliance_array)
+
+    # Scalar results are Python bools (or nan when masked). Arrays stay
+    # object arrays so invalid entries can be nan without turning the
+    # valid entries into floats.
+    compliance_array = _finalize_scalar_or_array(compliance_array)
 
     if round_output:
         pmv_array = np.round(pmv_array, 2)
