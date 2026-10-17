@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``pmv_ppd_ashrae`` scalar ``compliance`` when ``limit_inputs=False``.
+  It was a 0-d object array (``array(np.True_)``), so ``isinstance(..., bool)``
+  was false and the value was not JSON-serializable. It is now a Python
+  ``bool``, matching ``limit_inputs=True``.
 * Dropped support for Python 3.10, which reached end of life in October 2026.
   pythermalcomfort now requires Python 3.11 or later. Users on Python 3.10 keep
   getting 4.6.2 from pip.

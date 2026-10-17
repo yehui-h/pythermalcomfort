@@ -1,3 +1,6 @@
+import json
+import math
+
 import numpy as np
 import pytest
 
@@ -89,24 +92,28 @@ class TestPmvPpd:
             np.asarray([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]),
         )
 
+        result = pmv_ppd_ashrae(
+            41,
+            41,
+            2,
+            50,
+            0.7,
+            2.1,
+            model=Models.ashrae_55_2023.value,
+            limit_inputs=False,
+        )
         np.testing.assert_equal(
-            pmv_ppd_ashrae(
-                41,
-                41,
-                2,
-                50,
-                0.7,
-                2.1,
-                model=Models.ashrae_55_2023.value,
-                limit_inputs=False,
-            ),
+            result,
             PMVPPDAshrae(
                 pmv=np.float64(4.48),
                 ppd=np.float64(100.0),
                 tsv=np.str_("Hot"),
-                compliance=np.bool_(False),
+                compliance=False,
             ),
         )
+        # assert_equal treats np.bool_(False) as equal to False.
+        assert result.compliance is False
+        assert type(result.compliance) is bool
 
     def test_compliance(self) -> None:
         """Test that the function returns the correct compliance values."""
@@ -173,7 +180,83 @@ class TestPmvPpd:
             model=Models.ashrae_55_2023.value,
         )
         assert result.pmv < -0.5 or result.pmv > 0.5
-        assert result.compliance is False or result.compliance == np.bool_(False)
+        assert result.compliance is False
+
+    def test_compliance_scalar_is_python_bool_without_input_limits(self) -> None:
+        """Test that scalar compliance is a Python bool when limit_inputs is False."""
+        compliant = pmv_ppd_ashrae(
+            tdb=25,
+            tr=25,
+            vr=0.1,
+            rh=50,
+            met=1.2,
+            clo=0.5,
+            model=Models.ashrae_55_2023.value,
+            limit_inputs=False,
+        )
+        assert compliant.compliance is True
+        assert type(compliant.compliance) is bool
+        assert json.dumps(compliant.compliance) == "true"
+        assert "np.True_" not in str(compliant)
+
+        noncompliant = pmv_ppd_ashrae(
+            tdb=30,
+            tr=30,
+            vr=0.1,
+            rh=50,
+            met=1.2,
+            clo=0.5,
+            model=Models.ashrae_55_2023.value,
+            limit_inputs=False,
+        )
+        assert noncompliant.compliance is False
+        assert type(noncompliant.compliance) is bool
+        assert json.dumps(noncompliant.compliance) == "false"
+
+        with pytest.warns(UserWarning, match=r"'tdb'"):
+            masked = pmv_ppd_ashrae(
+                tdb=5,
+                tr=25,
+                vr=0.1,
+                rh=50,
+                met=1.2,
+                clo=0.5,
+                model=Models.ashrae_55_2023.value,
+                limit_inputs=True,
+            )
+        assert isinstance(masked.compliance, float)
+        assert math.isnan(masked.compliance)
+
+        with pytest.warns(UserWarning, match=r"'tdb'"):
+            array_result = pmv_ppd_ashrae(
+                tdb=[25, 5],
+                tr=25,
+                vr=0.1,
+                rh=50,
+                met=1.2,
+                clo=0.5,
+                model=Models.ashrae_55_2023.value,
+                limit_inputs=True,
+            )
+        assert isinstance(array_result.compliance, np.ndarray)
+        assert array_result.compliance.dtype == object
+        assert array_result.compliance[0] is True
+        assert math.isnan(array_result.compliance[1])
+
+        array_unmasked = pmv_ppd_ashrae(
+            tdb=[25, 30],
+            tr=25,
+            vr=0.1,
+            rh=50,
+            met=1.2,
+            clo=0.5,
+            model=Models.ashrae_55_2023.value,
+            limit_inputs=False,
+        )
+        assert isinstance(array_unmasked.compliance, np.ndarray)
+        assert array_unmasked.compliance.dtype == object
+        assert array_unmasked.compliance[0] is True
+        assert array_unmasked.compliance[1] is False
 
     def test_wrong_standard(self) -> None:
         """Test that the function raises a ValueError for an unsupported model."""
