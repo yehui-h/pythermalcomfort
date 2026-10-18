@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``cooling_effect`` for ``units="IP"``. The cooling effect is a
+  temperature difference, so the Celsius result is now multiplied by 9/5.
+  It was previously divided by 1.8 and multiplied by 3.28, which made IP
+  results about 1.2% high
+  (`#473 <https://github.com/pythermalcomfort/pythermalcomfort/issues/473>`_).
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
