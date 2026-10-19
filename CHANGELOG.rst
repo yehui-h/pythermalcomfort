@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed scalar acceptability flags from ``adaptive_ashrae`` and ``adaptive_en``
+  so they are Python ``bool`` values. They were ``numpy.bool_`` scalars, which
+  fail ``isinstance(..., bool)`` and are rejected by ``json.dumps``. Array
+  inputs still return boolean ndarrays.
 * Removed the ``temp_core_neutral`` keyword argument of ``two_nodes_gagge_sleep``. The
   model always derived core temperature from the Yan et al. (2022) time polynomial and
   ignored the value passed. Passing it now raises ``TypeError`` instead of being
@@ -46,7 +50,6 @@ Unreleased
   categories. UTCI and Heat Index values must be in °C. Column names, labels and colors
   can be overridden
   (`#458 <https://github.com/pythermalcomfort/pythermalcomfort/issues/458>`_).
-
 4.7.0 (2026-10-27)
 ------------------
 

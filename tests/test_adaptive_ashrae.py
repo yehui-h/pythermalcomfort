@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 
@@ -206,6 +208,50 @@ def test_round_output_false_propagates_to_bounds() -> None:
     assert np.isclose(unrounded.tmp_cmf_90_low, 24.465 - 2.5)
     assert np.isclose(unrounded.tmp_cmf_80_up, 24.465 + 3.5)
     assert np.isclose(unrounded.tmp_cmf_90_up, 24.465 + 2.5)
+
+
+def test_scalar_acceptability_is_python_bool() -> None:
+    """Scalar acceptability flags are builtin bools that json can serialize."""
+    comfortable = adaptive_ashrae(tdb=25, tr=25, t_running_mean=20, v=0.1)
+    assert comfortable.acceptability_80 is True
+    assert comfortable.acceptability_90 is True
+
+    # 80% band is 20.5-27.5 °C and 90% is 21.5-26.5 °C at this running mean.
+    warm = adaptive_ashrae(tdb=27, tr=27, t_running_mean=20, v=0.1)
+    assert warm.acceptability_80 is True
+    assert warm.acceptability_90 is False
+
+    hot = adaptive_ashrae(tdb=30, tr=30, t_running_mean=20, v=0.1)
+    assert hot.acceptability_80 is False
+    assert hot.acceptability_90 is False
+
+    ip_result = adaptive_ashrae(tdb=77, tr=77, t_running_mean=68, v=0.3, units="IP")
+    assert type(ip_result.acceptability_80) is bool
+    assert type(ip_result.acceptability_90) is bool
+    json.dumps(
+        {
+            "acceptability_80": comfortable.acceptability_80,
+            "acceptability_90": warm.acceptability_90,
+            "acceptability_80_ip": ip_result.acceptability_80,
+        }
+    )
+
+    # A length-1 list is an array, not a scalar bool.
+    one = adaptive_ashrae(tdb=[25], tr=25, t_running_mean=20, v=0.1)
+    assert isinstance(one.acceptability_80, np.ndarray)
+    assert one.acceptability_80.dtype == bool
+    assert one.acceptability_80.shape == (1,)
+
+    array_result = adaptive_ashrae(tdb=[25, 30], tr=[25, 30], t_running_mean=20, v=0.1)
+    assert array_result.acceptability_80.dtype == bool
+    assert array_result.acceptability_90.dtype == bool
+    np.testing.assert_array_equal(array_result.acceptability_80, [True, False])
+    np.testing.assert_array_equal(array_result.acceptability_90, [True, False])
+
+    with pytest.warns(UserWarning, match="t_running_mean"):
+        out_of_range = adaptive_ashrae(tdb=25, tr=25, t_running_mean=9, v=0.1)
+    assert out_of_range.acceptability_80 is False
+    assert out_of_range.acceptability_90 is False
 
 
 def test_round_output_invalid_type_raises() -> None:
