@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from pythermalcomfort.classes_input import NumericInput, WorkCapacityStandardsInputs
+from pythermalcomfort.classes_input import (
+    WORK_CAPACITY_RESTING_MET_W,
+    NumericInput,
+    WorkCapacityStandardsInputs,
+)
 from pythermalcomfort.classes_return import WorkCapacity
 
 
@@ -32,7 +36,9 @@ def work_capacity_iso(
     wbgt : float or list of floats
         Wet bulb globe temperature, [°C].
     met : float or list of floats
-        Metabolic heat production in Watts
+        Metabolic heat production, [W]. Must be greater than the resting
+        metabolic rate of 117 W. At that rate the work-rest ratio divides by
+        zero, and below it the ratio increases with WBGT.
 
     Returns
     -------
@@ -48,10 +54,8 @@ def work_capacity_iso(
     wbgt = np.asarray(wbgt)
     met = np.asarray(met)
 
-    met_rest = 117  # assumed resting metabolic rate
-
     wbgt_lim = 34.9 - met / 46
-    wbgt_lim_rest = 34.9 - met_rest / 46
+    wbgt_lim_rest = 34.9 - WORK_CAPACITY_RESTING_MET_W / 46
     capacity = ((wbgt_lim_rest - wbgt) / (wbgt_lim_rest - wbgt_lim)) * 100
     capacity = np.clip(capacity, 0, 100)
 

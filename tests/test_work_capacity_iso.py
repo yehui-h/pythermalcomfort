@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -35,7 +37,7 @@ def test_scalar_typical() -> None:
 def test_list_input_pairwise() -> None:
     """Test that the function handles list inputs correctly."""
     wbgts = [20.0, 30.0, 40.0]
-    mets = [100.0, 200.0, 300.0]
+    mets = [150.0, 200.0, 300.0]
     result = work_capacity_iso(wbgts, mets)
     assert isinstance(result.capacity, np.ndarray)
     expected = _expected_capacity(wbgts, mets)
@@ -81,3 +83,26 @@ def test_met_above_max_raises() -> None:
     """Test that the function raises ValueError for met above maximum."""
     with pytest.raises(ValueError):
         work_capacity_iso(25.0, 3000.0)
+
+
+def test_met_at_or_below_rest_raises() -> None:
+    """Reject rates at or below rest, where the work-rest ratio is undefined."""
+    with pytest.raises(ValueError, match="resting rate"):
+        work_capacity_iso(20.0, 0.0)
+    with pytest.raises(ValueError, match="resting rate"):
+        work_capacity_iso(20.0, 50.0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        with pytest.raises(ValueError, match="resting rate"):
+            work_capacity_iso(30.0, 117.0)
+    with pytest.raises(ValueError, match="resting rate"):
+        work_capacity_iso([20.0, 30.0], [200.0, 117.0])
+
+
+def test_capacity_decreases_as_wbgt_rises() -> None:
+    """Valid rates lose capacity as WBGT rises between the two limits."""
+    cooler = work_capacity_iso(31.0, 200.0).capacity
+    hotter = work_capacity_iso(32.0, 200.0).capacity
+    assert cooler > hotter
+    assert np.isfinite(cooler)
+    assert np.isfinite(hotter)
