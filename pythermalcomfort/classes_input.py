@@ -1079,6 +1079,12 @@ class WorkCapacityHothapsInputs(BaseInputs):
         super().__init__(wbgt=wbgt, work_intensity=work_intensity)
 
 
+# Resting metabolic rate used by the ISO and NIOSH work-capacity ratios.
+# The ratio divides by (WBGT limit at rest - WBGT limit at the given rate),
+# which is zero at this rate and negative below it.
+WORK_CAPACITY_RESTING_MET_W = 117.0
+
+
 @dataclass
 class WorkCapacityStandardsInputs(BaseInputs):
     def __init__(
@@ -1095,8 +1101,12 @@ class WorkCapacityStandardsInputs(BaseInputs):
     def __post_init__(self):
         super().__post_init__()
         met = np.asarray(self.met, dtype=float)
-        if np.any(met < 0) or np.any(met > 2500):
-            raise ValueError("Metabolic rate out of plausible range")
+        if np.any(met <= WORK_CAPACITY_RESTING_MET_W) or np.any(met > 2500):
+            error_msg = (
+                "Metabolic rate must be greater than the resting rate of "
+                f"{WORK_CAPACITY_RESTING_MET_W:g} W and no greater than 2500 W"
+            )
+            raise ValueError(error_msg)
 
 
 # New input class for the scale_wind_speed_log function

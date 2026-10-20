@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed ``work_capacity_iso`` and ``work_capacity_niosh`` so a metabolic rate
+  at or below the resting rate of 117 W is rejected. At rest the work-rest
+  ratio divided by zero; below rest it increased with WBGT.
+
 4.8.0 (2026-10-31)
 ------------------
 
