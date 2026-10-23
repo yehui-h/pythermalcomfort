@@ -37,6 +37,46 @@ def test_cooling_effect_regression_values() -> None:
         )
 
 
+def test_cooling_effect_ip_is_fahrenheit_interval() -> None:
+    """IP cooling effect is the Celsius difference times 9/5.
+
+    86 °F and 3.281 fps are 30 °C and 1 m/s after the input conversion, so both
+    calls solve the same problem. The unrounded Celsius result is about 4.0187,
+    and 4.0187 * 9/5 rounds to 7.23. The previous factor (3.28 / 1.8) returned
+    7.32. The published validation row for 77 °F still expects 3.95, and 3.90
+    is inside that table's 0.1 tolerance, so the corrected value is pinned here.
+    """
+    si = cooling_effect(tdb=30, tr=30, vr=1.0, rh=50, met=1.2, clo=0.5).ce
+    ip = cooling_effect(
+        tdb=86,
+        tr=86,
+        vr=3.281,
+        rh=50,
+        met=1.2,
+        clo=0.5,
+        units="IP",
+    ).ce
+    assert np.isclose(si, 4.02, atol=0.001)
+    assert np.isclose(ip, 7.23, atol=0.001)
+
+    documented = cooling_effect(
+        tdb=77, tr=77, vr=1.64, rh=50, met=1, clo=0.6, units="IP"
+    ).ce
+    assert np.isclose(documented, 3.9, atol=0.001)
+
+    # 0.3 fps is below 0.1 m/s, so that row stays 0 rather than being scaled.
+    array_result = cooling_effect(
+        tdb=[25, 77],
+        tr=[25, 77],
+        vr=[0.3, 1.64],
+        rh=[50, 50],
+        met=[1.2, 1],
+        clo=[0.5, 0.6],
+        units="IP",
+    ).ce
+    np.testing.assert_allclose(array_result, [0.0, 3.9], atol=0.001)
+
+
 def test_cooling_effect(get_test_url, retrieve_data) -> None:
     """Test that the function calculates the cooling effect correctly for various inputs."""
     reference_table = retrieve_reference_table(
