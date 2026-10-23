@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``pmv_ppd_ashrae`` scalar ``compliance`` when ``limit_inputs=False``.
+  It was a 0-d object array (``array(np.True_)``), so ``isinstance(..., bool)``
+  was false and the value was not JSON-serializable. It is now a Python
+  ``bool``, matching ``limit_inputs=True``.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
