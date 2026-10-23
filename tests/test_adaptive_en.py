@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 
@@ -113,6 +115,54 @@ def test_round_output_false_returns_unrounded() -> None:
     # Bounds derive from the unrounded value when round_output=False.
     assert np.isclose(unrounded.tmp_cmf_cat_i_low, 25.565 - 3.0)
     assert np.isclose(unrounded.tmp_cmf_cat_ii_up, 25.565 + 3.0)
+
+
+def test_scalar_acceptability_is_python_bool() -> None:
+    """Scalar category flags are builtin bools that json can serialize."""
+    comfortable = adaptive_en(tdb=25, tr=25, t_running_mean=20, v=0.1)
+    assert comfortable.acceptability_cat_i is True
+    assert comfortable.acceptability_cat_ii is True
+    assert comfortable.acceptability_cat_iii is True
+
+    # At t_rm=20 the upper limits are 27.4, 28.4 and 29.4 °C.
+    warm = adaptive_en(tdb=28, tr=28, t_running_mean=20, v=0.1)
+    assert warm.acceptability_cat_i is False
+    assert warm.acceptability_cat_ii is True
+    assert warm.acceptability_cat_iii is True
+
+    hot = adaptive_en(tdb=31, tr=31, t_running_mean=20, v=0.1)
+    assert hot.acceptability_cat_i is False
+    assert hot.acceptability_cat_ii is False
+    assert hot.acceptability_cat_iii is False
+
+    ip_result = adaptive_en(tdb=77, tr=77, t_running_mean=68, v=0.3, units="IP")
+    assert type(ip_result.acceptability_cat_i) is bool
+    assert type(ip_result.acceptability_cat_ii) is bool
+    assert type(ip_result.acceptability_cat_iii) is bool
+    json.dumps(
+        {
+            "acceptability_cat_i": comfortable.acceptability_cat_i,
+            "acceptability_cat_ii": warm.acceptability_cat_ii,
+            "acceptability_cat_i_ip": ip_result.acceptability_cat_i,
+        }
+    )
+
+    one = adaptive_en(tdb=[25], tr=25, t_running_mean=20, v=0.1)
+    assert isinstance(one.acceptability_cat_i, np.ndarray)
+    assert one.acceptability_cat_i.dtype == bool
+    assert one.acceptability_cat_i.shape == (1,)
+
+    array_result = adaptive_en(tdb=[25, 31], tr=[25, 31], t_running_mean=20, v=0.1)
+    assert array_result.acceptability_cat_i.dtype == bool
+    np.testing.assert_array_equal(array_result.acceptability_cat_i, [True, False])
+    np.testing.assert_array_equal(array_result.acceptability_cat_ii, [True, False])
+    np.testing.assert_array_equal(array_result.acceptability_cat_iii, [True, False])
+
+    with pytest.warns(UserWarning, match="t_running_mean"):
+        out_of_range = adaptive_en(tdb=25, tr=25, t_running_mean=9, v=0.1)
+    assert out_of_range.acceptability_cat_i is False
+    assert out_of_range.acceptability_cat_ii is False
+    assert out_of_range.acceptability_cat_iii is False
 
 
 def test_round_output_invalid_type_raises() -> None:

@@ -3,7 +3,7 @@ from typing import Literal
 import numpy as np
 
 from pythermalcomfort._internal.adaptive_cooling_effect import adaptive_cooling_effect
-from pythermalcomfort._internal.validation import _valid_range
+from pythermalcomfort._internal.validation import _finalize_bool_flag, _valid_range
 from pythermalcomfort.classes_input import ENInputs, NumericInput
 from pythermalcomfort.classes_return import AdaptiveEN
 from pythermalcomfort.environment import operative_tmp
@@ -72,7 +72,7 @@ def adaptive_en(
 
         results = adaptive_en(tdb=25, tr=25, t_running_mean=20, v=0.1)
         print(results)
-        # AdaptiveEN(tmp_cmf=np.float64(25.4), acceptability_cat_i=np.True_, acceptability_cat_ii=np.True_, ...)
+        # AdaptiveEN(tmp_cmf=np.float64(25.4), acceptability_cat_i=True, acceptability_cat_ii=True, ...)
 
         print(results.acceptability_cat_i)  # or print(results["acceptability_cat_i"])
         # True
@@ -81,11 +81,11 @@ def adaptive_en(
         # For users who want to use the IP system, units="IP" or "ip" are both valid
         results = adaptive_en(tdb=77, tr=77, t_running_mean=68, v=0.3, units="IP")
         print(results)
-        # AdaptiveEN(tmp_cmf=np.float64(77.7), acceptability_cat_i=np.True_, ...)
+        # AdaptiveEN(tmp_cmf=np.float64(77.7), acceptability_cat_i=True, ...)
 
         results = adaptive_en(tdb=25, tr=25, t_running_mean=9, v=0.1)
         print(results)
-        # AdaptiveEN(tmp_cmf=np.float64(nan), acceptability_cat_i=np.False_, ...)
+        # AdaptiveEN(tmp_cmf=np.float64(nan), acceptability_cat_i=False, ...)
         # The adaptive thermal comfort model can only be used
         # if the running mean temperature is between 10 °C and 30 °C.
     """
@@ -161,9 +161,9 @@ def adaptive_en(
 
     return AdaptiveEN(
         tmp_cmf=t_cmf,
-        acceptability_cat_i=acceptability_i,
-        acceptability_cat_ii=acceptability_ii,
-        acceptability_cat_iii=acceptability_iii,
+        acceptability_cat_i=_finalize_bool_flag(acceptability_i),
+        acceptability_cat_ii=_finalize_bool_flag(acceptability_ii),
+        acceptability_cat_iii=_finalize_bool_flag(acceptability_iii),
         tmp_cmf_cat_i_up=t_cmf_i_upper,
         tmp_cmf_cat_ii_up=t_cmf_ii_upper,
         tmp_cmf_cat_iii_up=t_cmf_iii_upper,

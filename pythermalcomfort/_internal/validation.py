@@ -166,6 +166,20 @@ def _finalize_scalar_or_array(arr: Any) -> Any:
     return arr
 
 
+def _finalize_bool_flag(value: Any) -> Any:
+    """Return a Python bool for a scalar flag and leave arrays unchanged.
+
+    A scalar ``numpy.bool_`` is not a builtin ``bool``: ``isinstance(flag, bool)`` is
+    false and ``json.dumps`` raises ``TypeError``. Arrays stay boolean ndarrays.
+    ``_finalize_scalar_or_array`` would cast those arrays to object dtype, which breaks
+    vectorized callers such as ``np.select``.
+    """
+    arr = np.asarray(value)
+    if arr.shape == ():
+        return _finalize_scalar_or_array(value)
+    return arr
+
+
 # Stress category thresholds shared by the Heat Index models (e.g. Rothfusz, Schoen).
 # Each model prepends its own "no risk" floor, since that lower bound depends on the
 # model's applicability range, e.g. {27.0: "no risk", **HEAT_INDEX_STRESS_CATEGORIES}.
