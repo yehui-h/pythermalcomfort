@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from pythermalcomfort._internal.ashrae55 import _check_ashrae55_compliance
+from pythermalcomfort._internal.validation import _finalize_scalar_or_array
 from pythermalcomfort.classes_input import NumericInput, VerticalTGradPPDInputs
 from pythermalcomfort.classes_return import VerticalTGradPPD
 from pythermalcomfort.models import pmv_ppd_ashrae
@@ -125,7 +126,9 @@ def vertical_tmp_grad_ppd(
     numerator = np.exp(0.13 * (tsv - 1.91) ** 2 + 0.15 * vertical_tmp_grad - 1.6)
     # 34.5 % baseline subtracted, negative values set to zero (Liu et al. 2020, eq. 3)
     ppd_val = np.maximum((numerator / (1 + numerator) - 0.345) * 100, 0.0)
-    acceptability = ppd_val <= 5
+    # Object dtype, same as pmv_ppd_ashrae compliance, so the NaN mask below
+    # cannot promote True/False to float.
+    acceptability = np.asarray(ppd_val <= 5, dtype=object)
 
     if round_output:
         ppd_val = np.round(ppd_val, 1)
@@ -155,5 +158,8 @@ def vertical_tmp_grad_ppd(
 
         ppd_val = np.where(all_valid, ppd_val, np.nan)
         acceptability = np.where(all_valid, acceptability, np.nan)
+
+    # Scalars become Python bool or nan. Arrays stay object arrays of bool/nan.
+    acceptability = _finalize_scalar_or_array(acceptability)
 
     return VerticalTGradPPD(ppd_vg=ppd_val, acceptability=acceptability)
