@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``use_fans_heatwaves`` so the heat-strain flags (``heat_strain``,
+  ``heat_strain_blood_flow``, ``heat_strain_w``, and ``heat_strain_sweating``)
+  stay boolean, as ``UseFansHeatwaves`` documents. Valid results are ``True``
+  or ``False``; inputs outside the applicability limits still yield ``nan``.
+  Previously the default path returned ``0.0`` / ``1.0``, and
+  ``limit_inputs=False`` with ``round_output=True`` raised ``UFuncTypeError``
+  because ``numpy.around`` was applied to those flags.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``

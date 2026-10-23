@@ -4,11 +4,31 @@ from dataclasses import asdict
 
 import numpy as np
 
-from pythermalcomfort._internal.validation import _valid_range
+from pythermalcomfort._internal.validation import (
+    _finalize_scalar_or_array,
+    _valid_range,
+)
 from pythermalcomfort.classes_input import NumericInput, UseFansHeatwavesInputs
 from pythermalcomfort.classes_return import UseFansHeatwaves
 from pythermalcomfort.models.two_nodes_gagge import two_nodes_gagge
 from pythermalcomfort.utilities import Postures
+
+# Numeric Gagge outputs. Heat-strain flags are handled separately so they are
+# never cast to float or passed to ``np.around``.
+_NUMERIC_OUTPUTS = (
+    "e_skin",
+    "e_rsw",
+    "e_max",
+    "q_sensible",
+    "q_skin",
+    "q_res",
+    "t_core",
+    "t_skin",
+    "m_bl",
+    "m_rsw",
+    "w",
+    "w_max",
+)
 
 
 def use_fans_heatwaves(
@@ -71,7 +91,8 @@ def use_fans_heatwaves(
         applicability limits are 20 < tdb [°C] < 50, 20 < tr [°C] < 50,
         0.1 < v [m/s] < 4.5, 0.7 < met [met] < 2, and 0 < clo [clo] < 1.
     round_output : bool, optional
-        If True, rounds output value. If False, it does not round it. Defaults to True.
+        If True, rounds numeric outputs to one decimal place. Heat-strain flags are
+        booleans and are not rounded. Defaults to True.
     max_sweating : float or list of floats, optional
         Maximum rate at which regulatory sweat is generated, [kg/h/m2]. Defaults to 500.
 
@@ -115,65 +136,36 @@ def use_fans_heatwaves(
     clo = np.asarray(clo)
     wme = np.asarray(wme)
 
-    output = two_nodes_gagge(
-        tdb=tdb,
-        tr=tr,
-        v=v,
-        rh=rh,
-        met=met,
-        clo=clo,
-        wme=wme,
-        body_surface_area=body_surface_area,
-        p_atm=p_atm,
-        position=position,
+    gagge = asdict(
+        two_nodes_gagge(
+            tdb=tdb,
+            tr=tr,
+            v=v,
+            rh=rh,
+            met=met,
+            clo=clo,
+            wme=wme,
+            body_surface_area=body_surface_area,
+            p_atm=p_atm,
+            position=position,
+            max_skin_blood_flow=max_skin_blood_flow,
+            round_output=False,
+            max_sweating=max_sweating,
+        )
+    )
+
+    numeric = {key: gagge[key] for key in _NUMERIC_OUTPUTS}
+    # Object arrays, same as pmv_ppd_ashrae compliance, so the NaN mask below
+    # cannot promote True/False to float. The overall flag is the OR of the
+    # components before that mask: nan is truthy, so it must not be OR'd in.
+    flags = _heat_strain_flags(
+        m_bl=gagge["m_bl"],
+        m_rsw=gagge["m_rsw"],
+        w=gagge["w"],
+        w_max=gagge["w_max"],
         max_skin_blood_flow=max_skin_blood_flow,
-        round_output=False,
         max_sweating=max_sweating,
     )
-
-    output = asdict(output)
-
-    output_vars = [
-        "e_skin",
-        "e_rsw",
-        "e_max",
-        "q_sensible",
-        "q_skin",
-        "q_res",
-        "t_core",
-        "t_skin",
-        "m_bl",
-        "m_rsw",
-        "w",
-        "w_max",
-        "heat_strain_blood_flow",
-        "heat_strain_w",
-        "heat_strain_sweating",
-        "heat_strain",
-    ]
-
-    output["heat_strain_blood_flow"] = np.where(
-        output["m_bl"] == max_skin_blood_flow,
-        True,
-        False,
-    )
-    output["heat_strain_w"] = np.where(output["w"] == output["w_max"], True, False)
-    output["heat_strain_sweating"] = np.where(
-        output["m_rsw"] == max_sweating,
-        True,
-        False,
-    )
-
-    output["heat_strain"] = np.any(
-        [
-            output["heat_strain_blood_flow"],
-            output["heat_strain_w"],
-            output["heat_strain_sweating"],
-        ],
-        axis=0,
-    )
-
-    output = {key: output[key] for key in output_vars}
 
     if limit_inputs:
         # fan_heatwaves applicability limits (extended from ASHRAE 55 baseline).
@@ -192,9 +184,43 @@ def use_fans_heatwaves(
             | np.isnan(met_valid)
             | np.isnan(clo_valid)
         )
-        output = {key: np.where(all_valid, output[key], np.nan) for key in output_vars}
+        numeric = {
+            key: np.where(all_valid, value, np.nan) for key, value in numeric.items()
+        }
+        flags = {
+            key: np.where(all_valid, value, np.nan) for key, value in flags.items()
+        }
+
+    # Scalars become Python bool or nan. Arrays stay object arrays of bool/nan.
+    flags = {key: _finalize_scalar_or_array(value) for key, value in flags.items()}
 
     if round_output:
-        output = {key: np.around(output[key], 1) for key in output_vars}
+        numeric = {key: np.around(value, 1) for key, value in numeric.items()}
 
-    return UseFansHeatwaves(**output)
+    return UseFansHeatwaves(**numeric, **flags)
+
+
+def _heat_strain_flags(
+    m_bl: np.ndarray,
+    m_rsw: np.ndarray,
+    w: np.ndarray,
+    w_max: np.ndarray,
+    max_skin_blood_flow: NumericInput,
+    max_sweating: NumericInput,
+) -> dict[str, np.ndarray]:
+    """Return heat-strain flags as object arrays of bool.
+
+    A bool array passed through ``np.where(..., np.nan)`` is promoted to float64, and
+    ``np.around`` cannot round bool values. Object dtype keeps each entry as ``True`` or
+    ``False`` and can also store ``nan``.
+    """
+    blood_flow = np.asarray(m_bl == max_skin_blood_flow)
+    wettedness = np.asarray(w == w_max)
+    sweating = np.asarray(m_rsw == max_sweating)
+    heat_strain = blood_flow | wettedness | sweating
+    return {
+        "heat_strain_blood_flow": np.asarray(blood_flow, dtype=object),
+        "heat_strain_w": np.asarray(wettedness, dtype=object),
+        "heat_strain_sweating": np.asarray(sweating, dtype=object),
+        "heat_strain": np.asarray(heat_strain, dtype=object),
+    }
