@@ -4,6 +4,9 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``two_nodes_gagge`` docstring example. At 25 °C, 50 % RH, 0.5 clo
+  and 1.2 met, skin wettedness is 0.12, not 100.0. The array case returns an
+  evaporative heat loss of 16.17 W/m2, not 100.0.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
