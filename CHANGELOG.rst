@@ -4,6 +4,8 @@ Changelog
 Unreleased
 ----------
 
+* Fixed the ``humidex`` docstring example. With rounding off, 25 °C at 50 % RH
+  and 30 °C at 60 % RH return about 28.23 and 38.56, not 28.2 and 39.1.
 * ``JOS3.t_core`` now has a setter, like ``t_skin``: ``model.t_core = 38.0`` sets the
   core temperatures of all 17 segments (a scalar, an array of 17 values, or a dict of
   body parts). Before, it raised ``AttributeError``. The ``t_core`` and ``t_skin``
