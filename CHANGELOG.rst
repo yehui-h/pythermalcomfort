@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed ``two_nodes_gagge_ji`` external work. ``wme`` is in met, but the core
+  heat balance subtracted it as if it were already W/m2, so one met of work
+  removed about 1 W/m2 instead of 58.2 W/m2. Results with the default
+  ``wme=0`` are unchanged.
+
 4.8.0 (2026-10-31)
 ------------------
 
