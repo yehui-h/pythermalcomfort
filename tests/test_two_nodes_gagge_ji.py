@@ -357,6 +357,50 @@ def test_unexpected_kwarg_raises_type_error() -> None:
     assert "Unexpected keyword arguments: ['foo']" in str(excinfo.value)
 
 
+def test_two_nodes_gagge_ji_external_work_uses_met_units() -> None:
+    """One met of external work removes 58.2 W/m2 from core storage.
+
+    The first minute still uses the initial skin-mass fraction of 0.1, and
+    skin temperature does not yet depend on the updated core temperature, so
+    the core drop equals that storage term exactly.
+    """
+    body_weight = 70.0
+    body_surface = 1.8258
+    common = {
+        "tdb": 25.0,
+        "tr": 25.0,
+        "v": 0.1,
+        "met": 1.2,
+        "clo": 0.5,
+        "vapor_pressure": 12.0,
+        "body_surface_area": body_surface,
+        "p_atm": 101325,
+        "position": "sitting",
+        "acclimatized": False,
+        "body_weight": body_weight,
+        "length_time_simulation": 1,
+        "initial_skin_temp": 33.7,
+        "initial_core_temp": 36.8,
+    }
+    without_work = two_nodes_gagge_ji(wme=0.0, **common)
+    with_work = two_nodes_gagge_ji(wme=1.0, **common)
+
+    np.testing.assert_array_equal(with_work.t_skin, without_work.t_skin)
+
+    met_to_w_m2 = 58.2
+    skin_mass_fraction = 0.1
+    thermal_capacity_core = 0.97 * (1.0 - skin_mass_fraction) * body_weight
+    expected_drop = met_to_w_m2 * body_surface / (thermal_capacity_core * 60.0)
+    actual_drop = float(without_work.t_core[0] - with_work.t_core[0])
+    np.testing.assert_allclose(actual_drop, expected_drop, rtol=1e-9, atol=0.0)
+
+    array_result = two_nodes_gagge_ji(wme=[0.0, 1.0], **common)
+    np.testing.assert_allclose(array_result.t_core[0], without_work.t_core)
+    np.testing.assert_allclose(array_result.t_core[1], with_work.t_core)
+    np.testing.assert_allclose(array_result.t_skin[0], without_work.t_skin)
+    np.testing.assert_allclose(array_result.t_skin[1], with_work.t_skin)
+
+
 def test_non_numeric_tdb_raises_type_error() -> None:
     """Test that a non-numeric tdb raises a TypeError."""
     with pytest.raises(TypeError):
