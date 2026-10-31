@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``phs`` docstring example for chained simulations. With
+  ``round_output=False``, a 60-minute run at 40 °C and 50 % RH returns a rectal
+  temperature of 37.84 °C, not 37.8, and the following 60 minutes return 38.53 °C,
+  not 38.5.
+
 4.8.0 (2026-10-31)
 ------------------
 
