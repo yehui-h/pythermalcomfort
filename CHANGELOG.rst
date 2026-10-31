@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``humidex`` docstring example. With rounding off, 25 °C at 50 % RH
+  and 30 °C at 60 % RH return about 28.23 and 38.56, not 28.2 and 39.1.
+
 4.8.0 (2026-10-31)
 ------------------
 
