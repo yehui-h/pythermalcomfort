@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``pmv_a`` docstring example. The return class is ``APMV`` and this
+  example's ``a_pmv`` is 0.71, not an ``AdaptivePMV`` of 0.74.
+
 4.8.0 (2026-10-31)
 ------------------
 
