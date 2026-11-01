@@ -50,6 +50,13 @@ def adaptive_ashrae(
 
     v : float or list of floats
         Air speed, default in [m/s] or [fps] if `units` = 'IP'.
+
+        .. note::
+            From 0.6 m/s, ASHRAE 55 raises the upper acceptability limits by
+            1.2 °C, by 1.8 °C from 0.9 m/s, and by 2.2 °C from 1.2 m/s. The
+            increase is added only when the room operative temperature is at
+            least 25 °C, and only to a limit that is already at least 25 °C
+            without the increase.
     units : str, optional
         Units system, 'SI' or 'IP'. Defaults to 'SI'.
     limit_inputs : bool, optional
@@ -144,8 +151,12 @@ def adaptive_ashrae(
 
     tmp_cmf_80_low = t_cmf - 3.5
     tmp_cmf_90_low = t_cmf - 2.5
-    tmp_cmf_80_up = t_cmf + 3.5 + ce
-    tmp_cmf_90_up = t_cmf + 2.5 + ce
+    # Raise a band only where its upper limit is already >= 25 °C. ``ce`` is 0
+    # when the room operative temperature is below 25 °C.
+    tmp_cmf_80_up = t_cmf + 3.5
+    tmp_cmf_90_up = t_cmf + 2.5
+    tmp_cmf_80_up = tmp_cmf_80_up + ce * (tmp_cmf_80_up >= 25.0)
+    tmp_cmf_90_up = tmp_cmf_90_up + ce * (tmp_cmf_90_up >= 25.0)
 
     # NaN where the inputs are outside the applicability limits (t_cmf is NaN) or
     # where an input is NaN. The cooling effect treats a NaN v as still air, so v is

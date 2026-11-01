@@ -1,6 +1,16 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed ``adaptive_ashrae`` adding the elevated-air-speed cooling effect to both
+  upper comfort limits whenever the room was at least 25 °C. ASHRAE 55 raises a
+  limit only when that limit is already at least 25 °C without the increase, which
+  is how ``AdaptivePlot`` draws the bands. The room still has to be at least 25 °C.
+  At a prevailing mean outdoor temperature of 11 °C and 0.6 m/s, a room at 25.5 °C
+  was inside the 80 % band (limit 25.9 °C) and is now outside it (limit 24.7 °C).
+
 4.8.1 (2026-11-05)
 ------------------
 
