@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -72,9 +74,9 @@ class TestCheckAshrae55Compliance:
     """Tests for _check_ashrae55_compliance warning behaviour (airspeed_control=False)."""
 
     def test_airspeed_control_cond1_warns(self) -> None:
-        """cond1: v > 0.8 with clo < 0.7 and met < 1.3 triggers UserWarning.
+        """Above 25.5 °C, air speed over 0.8 m/s triggers one UserWarning.
 
-        tdb=tr=30 → to=30 > 25.5, so cond2 does not trigger alongside cond1.
+        tdb=tr=30 → to=30, so only the 0.8 m/s cap applies.
         """
         with pytest.warns(UserWarning, match=r"exceeding 0\.8 m/s") as record:
             _check_ashrae55_compliance(
@@ -88,11 +90,11 @@ class TestCheckAshrae55Compliance:
         assert len(record) == 1
 
     def test_airspeed_control_cond2_warns(self) -> None:
-        """cond2: v exceeds ASHRAE comfort-zone limit (23°C < to < 25.5°C) triggers UserWarning.
+        """Air speed over the equal-SET curve triggers one UserWarning.
 
-        With tdb=tr=24, to=24; v_limit ≈ 0.32; v=0.5 > v_limit triggers cond2.
+        With tdb=tr=24, to=24; the curve limit is about 0.32 m/s and v=0.5 exceeds it.
         """
-        with pytest.warns(UserWarning, match=r"comfort zone"):
+        with pytest.warns(UserWarning, match=r"from 23°C through 25\.5°C"):
             _check_ashrae55_compliance(
                 tdb=np.float64(24),
                 tr=np.float64(24),
@@ -103,11 +105,11 @@ class TestCheckAshrae55Compliance:
             )
 
     def test_airspeed_control_cond3_warns(self) -> None:
-        """cond3: v > 0.2 when to <= 23°C triggers UserWarning.
+        """Below 23 °C, air speed over 0.2 m/s triggers one UserWarning.
 
-        With tdb=tr=22, to=22 <= 23; v=0.3 > 0.2 triggers cond3.
+        With tdb=tr=22, to=22; v=0.3 exceeds 0.2 m/s at 0.5 clo and 1.2 met.
         """
-        with pytest.warns(UserWarning, match=r"operative temperature is ≤ 23°C"):
+        with pytest.warns(UserWarning, match=r"below an operative temperature of 23°C"):
             _check_ashrae55_compliance(
                 tdb=np.float64(22),
                 tr=np.float64(22),
@@ -142,6 +144,93 @@ class TestCheckAshrae55Compliance:
         del kwargs[missing]
         with pytest.raises(ValueError, match=f"requires {missing}"):
             _check_ashrae55_compliance(**kwargs, airspeed_control=False)
+
+
+def _air_speed_after_no_control_check(tdb, tr, v, met, clo):
+    """Return the air speed left after the no-control limits, NaN where rejected."""
+    _tdb, _tr, checked, _met, _clo = _check_ashrae55_compliance(
+        tdb=tdb,
+        tr=tr,
+        v=v,
+        met=met,
+        clo=clo,
+        airspeed_control=False,
+    )
+    return checked
+
+
+class TestNoControlAirSpeedLimits:
+    """Section 5.3.2.4 bands, exception, and ASHRAE operative temperature."""
+
+    @pytest.mark.parametrize(
+        ("tdb", "tr", "v", "met", "clo", "rejected"),
+        [
+            pytest.param(26, 26, 0.9, 1.1, 0.5, True, id="above-25.5-over-0.8"),
+            pytest.param(26, 26, 0.8, 1.1, 0.5, False, id="above-25.5-at-0.8"),
+            pytest.param(26, 26, 0.9, 1.3, 0.8, True, id="0.8-cap-ignores-clo-and-met"),
+            pytest.param(25.5, 25.5, 0.85, 1.1, 0.5, False, id="curve-includes-25.5"),
+            pytest.param(
+                25.6, 25.6, 0.85, 1.1, 0.5, True, id="just-above-25.5-uses-0.8"
+            ),
+            pytest.param(24, 24, 0.5, 1.1, 0.8, True, id="curve-ignores-clo"),
+            pytest.param(23, 23, 0.195, 1.1, 0.5, True, id="curve-includes-23"),
+            pytest.param(23, 23, 0.19, 1.1, 0.5, False, id="under-curve-at-23"),
+            pytest.param(
+                22, 22, 0.3, 1.3, 0.7, True, id="0.2-cap-at-exact-0.7-clo-and-1.3-met"
+            ),
+            pytest.param(22, 22, 0.3, 1.1, 0.71, False, id="0.2-waived-above-0.7-clo"),
+            pytest.param(22, 22, 0.3, 1.31, 0.5, False, id="0.2-waived-above-1.3-met"),
+            # Air 20 °C, radiant 30 °C, 0.3 m/s. ASHRAE operative temperature is
+            # 24 °C (weight 0.6) and the curve limit is 0.318 m/s. ISO 7726 would
+            # give 23.66 °C, where the curve is 0.251 m/s and 0.3 m/s is over it.
+            pytest.param(
+                20, 30, 0.3, 1.1, 0.5, False, id="ashrae-operative-temperature"
+            ),
+            pytest.param(
+                20,
+                30,
+                0.35,
+                1.1,
+                0.5,
+                True,
+                id="ashrae-operative-temperature-over-curve",
+            ),
+        ],
+    )
+    def test_band_exception_and_operative_temperature(
+        self,
+        tdb: float,
+        tr: float,
+        v: float,
+        met: float,
+        clo: float,
+        rejected: bool,
+    ) -> None:
+        """Each band uses its own cap, and the 0.2 m/s waiver is only below 23 °C."""
+        if rejected:
+            with pytest.warns(UserWarning):
+                checked = _air_speed_after_no_control_check(tdb, tr, v, met, clo)
+            assert np.isnan(checked)
+        else:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", UserWarning)
+                checked = _air_speed_after_no_control_check(tdb, tr, v, met, clo)
+            assert checked == pytest.approx(v)
+
+    def test_array_rows_use_each_rows_own_band(self) -> None:
+        """One call can reject one row and keep the next."""
+        with pytest.warns(UserWarning):
+            checked = _air_speed_after_no_control_check(
+                tdb=np.array([26.0, 25.5, 22.0, 20.0]),
+                tr=np.array([26.0, 25.5, 22.0, 30.0]),
+                v=np.array([0.9, 0.85, 0.3, 0.3]),
+                met=np.array([1.3, 1.1, 1.3, 1.1]),
+                clo=np.array([0.7, 0.5, 0.7, 0.5]),
+            )
+        assert np.isnan(checked[0])  # 26 °C, 0.9 m/s: over 0.8, clo does not waive it
+        assert checked[1] == pytest.approx(0.85)  # 25.5 °C is still on the curve
+        assert np.isnan(checked[2])  # exactly 0.7 clo and 1.3 met stays limited
+        assert checked[3] == pytest.approx(0.3)  # ASHRAE operative temperature 24 °C
 
 
 def test_validate_type() -> None:
