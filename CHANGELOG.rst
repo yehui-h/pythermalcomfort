@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed the ``cooling_effect`` docstring example. With ``units="IP"``, 77 °F,
+  1.64 fps, 1 met and 0.6 clo returns 3.9, not 3.95. The 25 °F, 0.3 fps point
+  stays 0 because that air speed is below 0.1 m/s.
+
 4.8.1 (2026-11-05)
 ------------------
 
