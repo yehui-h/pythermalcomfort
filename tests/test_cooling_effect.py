@@ -34,6 +34,32 @@ def test_cooling_effect_ip_array_temperature_differences() -> None:
     np.testing.assert_allclose(ip, si * 1.8, atol=0.014, rtol=0)
 
 
+def test_cooling_effect_docstring_example() -> None:
+    """The published example must match the values the function returns.
+
+    77 °F at 1.64 fps, 1 met and 0.6 clo is about 2.17 °C of cooling. Scaled to
+    Fahrenheit and rounded to the public two decimals, that is 3.9, not 3.95.
+    """
+    scalar = cooling_effect(tdb=25, tr=25, vr=0.3, rh=50, met=1.2, clo=0.5)
+    assert scalar.ce == pytest.approx(1.68)
+
+    array = cooling_effect(
+        tdb=[25, 77],
+        tr=[25, 77],
+        vr=[0.3, 1.64],
+        rh=[50, 50],
+        met=[1.2, 1],
+        clo=[0.5, 0.6],
+        units="IP",
+    )
+    assert array.ce == pytest.approx([0.0, 3.9])
+
+    example = cooling_effect.__doc__.split("Examples", 1)[1]
+    assert "1.68" in example
+    assert "[0, 3.9]" in example
+    assert "3.95" not in example
+
+
 def test_cooling_effect_regression_values() -> None:
     """Pin ce against the reference (pre-refactor) implementation.
 
