@@ -320,8 +320,12 @@ def _gagge_two_nodes_optimized(
     r_clo = 0.155 * clo  # thermal resistance of clothing, C M^2 /W
     f_a_cl = 1.0 + 0.15 * clo  # increase in body surface area due to clothing
     lr = 2.2 / pressure_in_atmospheres  # Lewis ratio
-    rm = (met - wme) * met_factor  # metabolic rate
-    m = met * met_factor  # metabolic rate
+    # wme is external work in met, the same unit as met. ASHRAE 55 Appendix D
+    # subtracts that work in W/m2, and converts it back to met only for the
+    # standard-clothing insulation below.
+    external_work = wme * met_factor
+    m = met * met_factor  # gross metabolic rate, W/m2
+    rm = m - external_work  # net metabolic rate, W/m2
 
     e_comfort = 0.42 * (rm - met_factor)  # evaporative heat loss during comfort
     e_comfort = max(e_comfort, 0)
@@ -390,7 +394,9 @@ def _gagge_two_nodes_optimized(
         # 5.28 is the average body tissue conductance in W/(m2 C)
         # 1.163 is the thermal capacity of blood in Wh/(L C)
         hf_cs = (t_core - t_skin) * (5.28 + 1.163 * m_bl)
-        s_core = m - hf_cs - q_res - c_res - wme  # rate of energy storage in the core
+        s_core = (
+            m - hf_cs - q_res - c_res - external_work
+        )  # rate of energy storage in the core
         s_skin = hf_cs - q_sensible - e_skin  # rate of energy storage in the skin
         tc_sk = 0.97 * alfa * body_weight  # thermal capacity skin
         tc_cr = 0.97 * (1 - alfa) * body_weight  # thermal capacity core
@@ -453,7 +459,8 @@ def _gagge_two_nodes_optimized(
             e_rsw / 0.68
         )  # back calculating the mass of regulatory sweating as a function of e_rsw
         met_shivering = 19.4 * colds * c_cold  # met shivering W/m2
-        m = rm + met_shivering
+        # Keep m gross. s_core subtracts external_work, and rm is already net.
+        m = met * met_factor + met_shivering
         alfa = 0.0417737 + 0.7451833 / (m_bl + 0.585417)
 
     q_skin = q_sensible + e_skin  # total heat loss from skin, W
@@ -473,8 +480,8 @@ def _gagge_two_nodes_optimized(
         h_c_s + h_r_s
     )  # sum of convective and radiant heat transfer coefficient W/(m2*K)
     r_clo_s = (
-        1.52 / ((met - wme / met_factor) + 0.6944) - 0.1835
-    )  # thermal resistance of clothing, °C M^2 /W
+        1.52 / ((met - wme) + 0.6944) - 0.1835
+    )  # standard clothing insulation, clo; met and wme are both in met
     r_cl_s = 0.155 * r_clo_s  # thermal insulation of the clothing in M2K/W
     f_a_cl_s = 1.0 + k_clo * r_clo_s  # increase in body surface area due to clothing
     f_cl_s = 1.0 / (
@@ -565,7 +572,7 @@ def _gagge_two_nodes_optimized(
     if disc > 6:
         disc = 6.0
 
-    # PMV Gagge
+    # PMV Gagge. The coefficient uses the gross metabolic rate, as in Fanger.
     pmv_gagge = (0.303 * math.exp(-0.036 * m) + 0.028) * (e_req - e_comfort - e_diff)
 
     # PMV SET

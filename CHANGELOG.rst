@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* ``two_nodes_gagge`` treats ``wme`` as met throughout. The core heat balance
+  subtracted it as if it were already W/m2, and the standard-clothing formula
+  divided that met value by 58.2 again. The PMV coefficient used the net rate,
+  because external work had been folded into the metabolic rate; it now uses the
+  gross rate, as in Fanger's equation, and external work is subtracted once, in
+  W/m2, from the heat balance. ``set_tmp``, ``cooling_effect`` and
+  ``use_fans_heatwaves`` pass ``wme`` through, so they follow the same correction.
+  Results with ``wme`` of 0 are unchanged.
+
 4.8.1 (2026-11-05)
 ------------------
 

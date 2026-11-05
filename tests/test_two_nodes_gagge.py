@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pythermalcomfort.models import two_nodes_gagge
+from pythermalcomfort.models import set_tmp, two_nodes_gagge
 from tests.conftest import Urls, retrieve_reference_table, validate_result
 
 
@@ -54,3 +54,48 @@ def test_two_nodes_returns_nan_for_non_finite_inputs(name, bad) -> None:
     assert np.isnan(result.disc[1])
     assert np.isnan(result.t_core[1])
     assert np.isnan(result.set[1])
+
+
+def test_two_nodes_external_work_is_in_met() -> None:
+    """Subtract external work once, in W/m2, from a value given in met.
+
+    The core balance used to subtract ``wme`` as though it were already W/m2, and
+    the standard-clothing formula divided that met value by 58.2 again. For this
+    case that raised SET from 23.8 °C to 24.4 °C. ``wme`` of 0 is unchanged, and
+    ``set_tmp`` passes ``wme`` through without converting it a second time.
+    """
+    common = {
+        "tdb": 25,
+        "tr": 25,
+        "v": 0.1,
+        "rh": 50,
+        "met": 1.2,
+        "clo": 0.5,
+        "round_output": False,
+    }
+    at_rest = two_nodes_gagge(**common, wme=0)
+    working = two_nodes_gagge(**common, wme=0.2)
+
+    assert at_rest.set == pytest.approx(24.314907736364308)
+    assert working.set == pytest.approx(23.812103016488845)
+    assert working.t_core == pytest.approx(36.829365440649205)
+    assert working.pmv_gagge == pytest.approx(-0.0045946706553809)
+    assert working.set < at_rest.set
+    assert working.t_core < at_rest.t_core
+    assert working.e_skin < at_rest.e_skin
+
+    paired = two_nodes_gagge(
+        tdb=[25, 25],
+        tr=25,
+        v=0.1,
+        rh=50,
+        met=1.2,
+        clo=0.5,
+        wme=[0, 0.2],
+        round_output=False,
+    )
+    assert paired.set[0] == pytest.approx(at_rest.set)
+    assert paired.set[1] == pytest.approx(working.set)
+    assert set_tmp(**common, wme=0.2, limit_inputs=False).set == pytest.approx(
+        working.set
+    )
