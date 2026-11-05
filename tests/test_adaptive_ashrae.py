@@ -228,3 +228,118 @@ def test_acceptability_nan_for_nan_input(nan_input: str) -> None:
     result = adaptive_ashrae(**inputs, limit_inputs=False)
     np.testing.assert_array_equal(result.acceptability_80, [1.0, np.nan])
     np.testing.assert_array_equal(result.acceptability_90, [1.0, np.nan])
+
+
+def test_cooling_effect_follows_each_bands_own_25_c_limit() -> None:
+    """A warm room does not raise a limit that is still below 25 °C."""
+    # 0.31 * 11 + 17.8 = 21.21, so the unraised limits are 24.71 °C and 23.71 °C.
+    t_cmf = 0.31 * 11 + 17.8
+    for room in (24.9, 25.5):
+        result = adaptive_ashrae(
+            tdb=room,
+            tr=room,
+            t_running_mean=11,
+            v=0.6,
+            round_output=False,
+        )
+        assert result.tmp_cmf_80_up == pytest.approx(t_cmf + 3.5)
+        assert result.tmp_cmf_90_up == pytest.approx(t_cmf + 2.5)
+        np.testing.assert_array_equal(result.acceptability_80, 0.0)
+        np.testing.assert_array_equal(result.acceptability_90, 0.0)
+
+    rounded = adaptive_ashrae(tdb=25.5, tr=25.5, t_running_mean=11, v=0.6)
+    assert rounded.tmp_cmf_80_up == pytest.approx(24.7)
+    assert rounded.tmp_cmf_90_up == pytest.approx(23.7)
+
+
+def test_cooling_effect_can_raise_one_band_and_not_the_other() -> None:
+    """At 13 °C outdoors only the 80 % limit has reached 25 °C."""
+    t_cmf = 0.31 * 13 + 17.8
+    result = adaptive_ashrae(
+        tdb=25,
+        tr=25,
+        t_running_mean=13,
+        v=0.6,
+        round_output=False,
+    )
+    assert result.tmp_cmf_80_up == pytest.approx(t_cmf + 3.5 + 1.2)
+    assert result.tmp_cmf_90_up == pytest.approx(t_cmf + 2.5)
+    np.testing.assert_array_equal(result.acceptability_80, 1.0)
+    np.testing.assert_array_equal(result.acceptability_90, 0.0)
+
+    rounded = adaptive_ashrae(tdb=25, tr=25, t_running_mean=13, v=0.6)
+    np.testing.assert_array_equal(rounded.acceptability_80, result.acceptability_80)
+    np.testing.assert_array_equal(rounded.acceptability_90, result.acceptability_90)
+
+
+def test_cooling_effect_still_requires_a_room_of_at_least_25_c() -> None:
+    """A cool room keeps the unraised limits when the bands are already above 25 °C."""
+    t_cmf = 0.31 * 20 + 17.8
+    cool = adaptive_ashrae(tdb=24, tr=24, t_running_mean=20, v=1.2, round_output=False)
+    warm = adaptive_ashrae(tdb=25, tr=25, t_running_mean=20, v=1.2, round_output=False)
+    assert cool.tmp_cmf_80_up == pytest.approx(t_cmf + 3.5)
+    assert cool.tmp_cmf_90_up == pytest.approx(t_cmf + 2.5)
+    assert warm.tmp_cmf_80_up == pytest.approx(t_cmf + 3.5 + 2.2)
+    assert warm.tmp_cmf_90_up == pytest.approx(t_cmf + 2.5 + 2.2)
+
+
+def test_eighty_percent_band_steps_at_its_own_25_c_crossing() -> None:
+    """The 80 % limit starts rising where its unraised value reaches 25 °C."""
+    t_rm_step = (25.0 - 17.8 - 3.5) / 0.31
+    below = adaptive_ashrae(
+        tdb=26,
+        tr=26,
+        t_running_mean=t_rm_step - 0.05,
+        v=0.9,
+        round_output=False,
+    )
+    at_step = adaptive_ashrae(
+        tdb=26,
+        tr=26,
+        t_running_mean=t_rm_step,
+        v=0.9,
+        round_output=False,
+    )
+    assert below.tmp_cmf_80_up < 25
+    assert at_step.tmp_cmf_80_up == pytest.approx(25 + 1.8)
+    assert at_step.tmp_cmf_90_up < 25
+    np.testing.assert_array_equal(below.acceptability_80, 0.0)
+    np.testing.assert_array_equal(at_step.acceptability_80, 1.0)
+
+
+def test_band_gate_is_applied_in_celsius_before_ip_conversion() -> None:
+    """IP results use the same 25 °C gate as SI."""
+    si = adaptive_ashrae(tdb=25, tr=25, t_running_mean=13, v=0.6, round_output=False)
+    ip = adaptive_ashrae(
+        tdb=77,
+        tr=77,
+        t_running_mean=13 * 1.8 + 32,
+        v=0.6 * 3.281,
+        units="IP",
+        round_output=False,
+    )
+    assert ip.tmp_cmf_80_up == pytest.approx(float(si.tmp_cmf_80_up) * 1.8 + 32)
+    assert ip.tmp_cmf_90_up == pytest.approx(float(si.tmp_cmf_90_up) * 1.8 + 32)
+    np.testing.assert_array_equal(ip.acceptability_80, si.acceptability_80)
+    np.testing.assert_array_equal(ip.acceptability_90, si.acceptability_90)
+
+
+def test_array_rows_use_each_rows_own_band_limit() -> None:
+    """Each row is raised from its own unraised limit, not from its neighbour's."""
+    result = adaptive_ashrae(
+        tdb=[25.5, 25.0],
+        tr=[25.5, 25.0],
+        t_running_mean=[11.0, 13.0],
+        v=0.6,
+        round_output=False,
+    )
+    np.testing.assert_allclose(
+        result.tmp_cmf_80_up,
+        [0.31 * 11 + 17.8 + 3.5, 0.31 * 13 + 17.8 + 3.5 + 1.2],
+    )
+    np.testing.assert_allclose(
+        result.tmp_cmf_90_up,
+        [0.31 * 11 + 17.8 + 2.5, 0.31 * 13 + 17.8 + 2.5],
+    )
+    np.testing.assert_array_equal(result.acceptability_80, [0.0, 1.0])
+    np.testing.assert_array_equal(result.acceptability_90, [0.0, 0.0])
