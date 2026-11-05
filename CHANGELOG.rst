@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed ``pmv_ppd_ashrae`` with ``airspeed_control=False`` so the no-control air-speed
+  limits follow ASHRAE 55 Section 5.3.2.4 (Addendum d to 55-2017). The cap is 0.8 m/s
+  above 25.5 °C, the equal-SET curve from 23 °C through 25.5 °C, and 0.2 m/s below
+  23 °C. The clothing and activity exception applies only below 23 °C, and only above
+  0.7 clo or above 1.3 met. Operative temperature now uses the ASHRAE weighting. At
+  26 °C, 0.9 m/s, 0.7 clo and 1.3 met, PMV was −0.14 and is now undefined. At 25.5 °C
+  and 0.85 m/s the result is kept, because the curve limit there is 0.87 m/s.
+
 4.8.1 (2026-11-05)
 ------------------
 

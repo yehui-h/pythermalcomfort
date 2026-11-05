@@ -11,10 +11,13 @@ from pythermalcomfort.environment import operative_tmp
 def _check_ashrae55_compliance(**kwargs):
     """ASHRAE 55-2023 input applicability check.
 
-    Implements the Table 7.3.4 single-variable limits and the §7.2.1.2
-    ``airspeed_control`` cross-variable rules. Single-use compliance checks for other
-    standards (ISO 7730, ISO 7933, fan_heatwaves) live inline in the respective model
-    files.
+    Implements the Table 7.3.4 single-variable limits. With ``airspeed_control=False``
+    it also applies the no-occupant-control air-speed limits (Addendum d to 55-2017,
+    Section 5.3.2.4): 0.8 m/s above 25.5 °C, the equal-SET curve from 23 °C through 25.5
+    °C, and 0.2 m/s below 23 °C. The clothing and metabolic-rate exception applies only
+    below 23 °C, and only above 0.7 clo or above 1.3 met. Operative temperature uses the
+    ASHRAE weighting. Single-use compliance checks for other standards (ISO 7730, ISO
+    7933, fan_heatwaves) live inline in the respective model files.
 
     ``v_param_name`` (default ``"v"``) controls how the airspeed variable is rendered in
     UserWarnings emitted by this function. Callers whose signature names the airspeed
@@ -41,56 +44,55 @@ def _check_ashrae55_compliance(**kwargs):
         if missing:
             msg = f"airspeed_control=False requires {', '.join(missing)} to check the limits."
             raise ValueError(msg)
-        v_arr = np.asarray(params["v"])
-        cond1 = (params["v"] > 0.8) & (params["clo"] < 0.7) & (params["met"] < 1.3)
-        if np.any(cond1):
-            detail = _format_violation_detail(v_arr, cond1)
+        v = np.asarray(params["v"], dtype=np.float64)
+        clo = np.asarray(params["clo"], dtype=np.float64)
+        met = np.asarray(params["met"], dtype=np.float64)
+        # Addendum d to ASHRAE 55-2017, Section 5.3.2.4. Operative temperature
+        # is the ASHRAE weighting (Appendix A), not the ISO 7726 formula.
+        to = operative_tmp(tdb=params["tdb"], tr=params["tr"], v=v, standard="ashrae")
+
+        # (a) above 25.5 °C the cap is 0.8 m/s, with no clothing or activity exception.
+        above_cap = (to > 25.5) & (v > 0.8)
+        if np.any(above_cap):
+            detail = _format_violation_detail(v, above_cap)
             warnings.warn(
                 f"airspeed_control=False: '{v_param_name}' has {detail} exceeding "
-                f"0.8 m/s under low clothing (clo < 0.7) and low activity "
-                f"(met < 1.3) and will be set to NaN.",
+                "0.8 m/s above an operative temperature of 25.5°C and will be "
+                "set to NaN.",
                 UserWarning,
                 stacklevel=2,
             )
-        v_valid = np.where(cond1, np.nan, v_valid)
+        v_valid = np.where(above_cap, np.nan, v_valid)
 
-        to = operative_tmp(tdb=params["tdb"], tr=params["tr"], v=params["v"])
+        # (b) from 23 °C through 25.5 °C the cap is the equal-SET curve. (a) is
+        # strictly above 25.5 °C and (c) is strictly below 23 °C, so both
+        # endpoints belong to this clause.
         v_limit = 50.49 - 4.4047 * to + 0.096425 * to * to
-
-        cond2 = (
-            (to > 23)
-            & (to < 25.5)
-            & (params["v"] > v_limit)
-            & (params["clo"] < 0.7)
-            & (params["met"] < 1.3)
-        )
-        if np.any(cond2):
-            detail = _format_violation_detail(v_arr, cond2)
+        on_curve = (to >= 23.0) & (to <= 25.5) & (v > v_limit)
+        if np.any(on_curve):
+            detail = _format_violation_detail(v, on_curve)
             warnings.warn(
                 f"airspeed_control=False: '{v_param_name}' has {detail} exceeding "
-                f"the ASHRAE 55 airspeed limit in the comfort zone "
-                f"(23°C < to < 25.5°C) and will be set to NaN.",
+                "the ASHRAE 55 air-speed limit from 23°C through 25.5°C and "
+                "will be set to NaN.",
                 UserWarning,
                 stacklevel=2,
             )
-        v_valid = np.where(cond2, np.nan, v_valid)
+        v_valid = np.where(on_curve, np.nan, v_valid)
 
-        cond3 = (
-            (to <= 23)
-            & (params["v"] > 0.2)
-            & (params["clo"] < 0.7)
-            & (params["met"] < 1.3)
-        )
-        if np.any(cond3):
-            detail = _format_violation_detail(v_arr, cond3)
+        # (c) below 23 °C the cap is 0.2 m/s. The exception is only this clause,
+        # and only strictly above 0.7 clo or strictly above 1.3 met.
+        below_cap = (to < 23.0) & (v > 0.2) & (clo <= 0.7) & (met <= 1.3)
+        if np.any(below_cap):
+            detail = _format_violation_detail(v, below_cap)
             warnings.warn(
                 f"airspeed_control=False: '{v_param_name}' has {detail} exceeding "
-                f"0.2 m/s when operative temperature is ≤ 23°C and will be set "
-                f"to NaN.",
+                "0.2 m/s below an operative temperature of 23°C and will be "
+                "set to NaN.",
                 UserWarning,
                 stacklevel=2,
             )
-        v_valid = np.where(cond3, np.nan, v_valid)
+        v_valid = np.where(below_cap, np.nan, v_valid)
 
         values_to_return["v"] = v_valid
 

@@ -101,12 +101,13 @@ def pmv_ppd_ashrae(
             0 < vr [m/s] < 2, 1 < met [met] < 4, and 0 < clo [clo] < 1.5.
 
     airspeed_control : bool, optional
-        By default, this function assumes that the
-        occupant has control over the airspeed. In this case, the ASHRAE 55 Standard does
-        not impose any airspeed limits. On the other hand, if the occupant has no control
-        over the airspeed, the ASHRAE 55 imposes an upper limit for v which varies as a
-        function of the operative temperature, for more information please consult the
-        Standard.
+        If True (default), the occupant can control the local air speed and ASHRAE 55
+        imposes no upper limit on it. If False, the no-occupant-control limits of
+        Section 5.3.2.4 apply to ``vr``, using ASHRAE operative temperature: 0.8 m/s
+        above 25.5 °C, the equal-SET curve from 23 °C through 25.5 °C, and 0.2 m/s
+        below 23 °C. The 0.2 m/s limit is waived only above 0.7 clo or above 1.3 met.
+        The standard states these limits for average air speed; this function applies
+        them to ``vr`` because that is the only air speed it receives.
     round_output : bool, optional
         If True, rounds output value. If False, it does not round it. Defaults to True.
 

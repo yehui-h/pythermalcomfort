@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -25,6 +27,12 @@ def test_pmv_ppd(get_test_url, retrieve_data) -> None:
         if inputs["standard"].lower() == "ashrae":
             inputs["model"] = Models.ashrae_55_2023.value
             del inputs["standard"]
+            # validation-data-comfort-models v1.1.0 still records PMV for the
+            # 0.7 clo and 1.3 met rows of the no-control case. Section 5.3.2.4
+            # waives the 0.2 m/s cap only above those values, and only below
+            # 23 °C, so every row of that case is undefined.
+            if outputs.get("pmv") == [None, None, None, -0.14, -0.43, -0.57]:
+                outputs = {"pmv": [None] * 6, "ppd": [None] * 6}
             result = pmv_ppd_ashrae(**inputs)
 
             validate_result(result, outputs, tolerance)
@@ -61,20 +69,22 @@ class TestPmvPpd:
     #  Returns NaN for invalid input values
     def test_returns_nan_for_invalid_input_values(self) -> None:
         """Test that the function returns NaN for invalid input values."""
-        # test airspeed limits
-        np.testing.assert_equal(
-            pmv_ppd_ashrae(
-                [26, 24, 22, 26, 24, 22],
-                [26, 24, 22, 26, 24, 22],
-                [0.9, 0.6, 0.3, 0.9, 0.6, 0.3],
-                50,
-                [1.1, 1.1, 1.1, 1.3, 1.3, 1.3],
-                [0.5, 0.5, 0.5, 0.7, 0.7, 0.7],
-                model=Models.ashrae_55_2023.value,
-                airspeed_control=False,
-            ).pmv,
-            [np.nan, np.nan, np.nan, -0.14, -0.43, -0.57],
-        )
+        # 0.7 clo and 1.3 met do not waive the 0.8 m/s cap, the curve, or the
+        # 0.2 m/s cap. The waiver starts above those values and only below 23 °C.
+        with pytest.warns(UserWarning):
+            np.testing.assert_equal(
+                pmv_ppd_ashrae(
+                    [26, 24, 22, 26, 24, 22],
+                    [26, 24, 22, 26, 24, 22],
+                    [0.9, 0.6, 0.3, 0.9, 0.6, 0.3],
+                    50,
+                    [1.1, 1.1, 1.1, 1.3, 1.3, 1.3],
+                    [0.5, 0.5, 0.5, 0.7, 0.7, 0.7],
+                    model=Models.ashrae_55_2023.value,
+                    airspeed_control=False,
+                ).pmv,
+                [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+            )
 
         np.testing.assert_equal(
             pmv_ppd_ashrae(
@@ -231,12 +241,11 @@ class TestPmvPpd:
         assert len(recwarn) == 0
 
     def test_airspeed_control_false_cond1_warns(self) -> None:
-        """airspeed_control=False: v > 0.8 with low clo and met triggers UserWarning."""
-        # to ≈ 26 > 25.5, so only cond1 applies: v=0.9 > 0.8, clo=0.5 < 0.7, met=1.1 < 1.3
+        """Above 25.5 °C, vr over 0.8 m/s makes PMV undefined."""
         with pytest.warns(
             UserWarning, match=r"airspeed_control=False.*exceeding 0\.8 m/s"
         ):
-            pmv_ppd_ashrae(
+            result = pmv_ppd_ashrae(
                 tdb=26,
                 tr=26,
                 vr=0.9,
@@ -246,12 +255,12 @@ class TestPmvPpd:
                 model=Models.ashrae_55_2023.value,
                 airspeed_control=False,
             )
+        assert np.isnan(result.pmv)
 
     def test_airspeed_control_false_cond2_warns(self) -> None:
-        """airspeed_control=False: v exceeds comfort-zone limit triggers UserWarning."""
-        # to ≈ 24, so 23 < to < 25.5; v=0.6 exceeds computed v_limit ≈ 0.32
-        with pytest.warns(UserWarning, match=r"airspeed_control=False.*comfort zone"):
-            pmv_ppd_ashrae(
+        """From 23 °C through 25.5 °C, vr over the curve makes PMV undefined."""
+        with pytest.warns(UserWarning, match=r"from 23°C through 25\.5°C"):
+            result = pmv_ppd_ashrae(
                 tdb=24,
                 tr=24,
                 vr=0.6,
@@ -261,14 +270,12 @@ class TestPmvPpd:
                 model=Models.ashrae_55_2023.value,
                 airspeed_control=False,
             )
+        assert np.isnan(result.pmv)
 
     def test_airspeed_control_false_cond3_warns(self) -> None:
-        """airspeed_control=False: v > 0.2 when to <= 23°C triggers UserWarning."""
-        # to ≈ 22 <= 23; v=0.3 > 0.2, clo=0.5 < 0.7, met=1.1 < 1.3
-        with pytest.warns(
-            UserWarning, match=r"airspeed_control=False.*exceeding 0\.2 m/s"
-        ):
-            pmv_ppd_ashrae(
+        """Below 23 °C, vr over 0.2 m/s makes PMV undefined."""
+        with pytest.warns(UserWarning, match=r"below an operative temperature of 23°C"):
+            result = pmv_ppd_ashrae(
                 tdb=22,
                 tr=22,
                 vr=0.3,
@@ -278,3 +285,43 @@ class TestPmvPpd:
                 model=Models.ashrae_55_2023.value,
                 airspeed_control=False,
             )
+        assert np.isnan(result.pmv)
+
+    def test_no_control_keeps_pmv_inside_the_ashrae_limit(self) -> None:
+        """A speed the ASHRAE operative-temperature curve allows keeps its PMV.
+
+        Air at 20 °C and a radiant temperature of 30 °C at 0.3 m/s has an ASHRAE
+        operative temperature of 24 °C. The curve limit there is 0.318 m/s.
+        """
+        kwargs = {
+            "tdb": 20,
+            "tr": 30,
+            "vr": 0.3,
+            "rh": 50,
+            "met": 1.1,
+            "clo": 0.5,
+            "model": Models.ashrae_55_2023.value,
+            "round_output": False,
+        }
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            limited = pmv_ppd_ashrae(**kwargs, airspeed_control=False)
+        free = pmv_ppd_ashrae(**kwargs, airspeed_control=True)
+        assert limited.pmv == pytest.approx(free.pmv)
+        assert np.isfinite(limited.pmv)
+
+    def test_no_control_ip_uses_the_same_celsius_gate(self) -> None:
+        """IP inputs are converted before the 25.5 °C and 0.8 m/s checks."""
+        with pytest.warns(UserWarning):
+            result = pmv_ppd_ashrae(
+                tdb=26 * 1.8 + 32,
+                tr=26 * 1.8 + 32,
+                vr=0.9 * 3.281,
+                rh=50,
+                met=1.1,
+                clo=0.5,
+                units="IP",
+                model=Models.ashrae_55_2023.value,
+                airspeed_control=False,
+            )
+        assert np.isnan(result.pmv)
