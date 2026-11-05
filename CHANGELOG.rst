@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed Sphinx links in ``net``, ``set_tmp``, ``cooling_effect`` and
+  ``vertical_tmp_grad_ppd``. They named ``Net``, ``SetTmp``, ``CoolingEffect``
+  and ``VerticalTmpGradPPD``, which are not classes. The return classes are
+  ``NET``, ``SET``, ``CE`` and ``VerticalTGradPPD``.
+
 4.8.1 (2026-11-05)
 ------------------
 
