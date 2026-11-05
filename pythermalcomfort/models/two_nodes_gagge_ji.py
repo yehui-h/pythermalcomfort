@@ -50,7 +50,8 @@ def two_nodes_gagge_ji(
             :py:meth:`pythermalcomfort.psychrometrics.p_sat_torr`.
 
     wme : float or list of floats
-        External work, [met]. Defaults to 0.
+        External work, [met]. Defaults to 0. Converted to W/m2 with the same
+        58.2 factor as the metabolic rate, then subtracted from core heat storage.
     body_surface_area : float or list of floats
         Body surface area, [m2]. Defaults to 1.8258.
 
@@ -289,6 +290,7 @@ def _two_nodes_ji_optimized_scalar(
     f_a_cl = 1.0 + 0.2 * clo if clo < 0.5 else 1.05 + 0.1 * clo
     lr = 2.2 / pressure_in_atmospheres  # Lewis relation
     m = met * met_factor  # metabolic rate in W/m2
+    external_work = wme * met_factor  # external work in W/m2
 
     i_cl = 1.0  # permeation efficiency of water vapor naked skin
     if clo > 0:
@@ -373,7 +375,8 @@ def _two_nodes_ji_optimized_scalar(
         # 5.28 is the average body tissue conductance in W/(m2 C)
         # 1.163 is the thermal capacity of blood in Wh/(L C)
         hf_cs = (t_core - t_skin) * (5.28 + 1.163 * m_bl)
-        s_core = m - hf_cs - q_res - c_res - wme  # rate of energy storage in the core
+        # rate of energy storage in the core, W/m2
+        s_core = m - hf_cs - q_res - c_res - external_work
         s_skin = hf_cs - q_sensible - e_skin  # rate of energy storage in the skin
         tc_sk = 0.97 * alfa * body_weight  # thermal capacity skin
         tc_cr = 0.97 * (1 - alfa) * body_weight  # thermal capacity core
