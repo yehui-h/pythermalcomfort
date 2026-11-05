@@ -341,3 +341,73 @@ def test_2023_forces_skin_temperature_to_equilibrium_on_minute_one() -> None:
     result_2004 = phs(model="7933-2004", **kwargs)
     assert result_2023.t_sk > 30
     assert result_2004.t_sk < result_2023.t_sk
+
+
+def test_phs_docstring_chaining_example() -> None:
+    """The published chaining example must match the values the function returns."""
+    rounded = phs(
+        tdb=40,
+        tr=40,
+        rh=33.85,
+        v=0.3,
+        met=2.5,
+        clo=0.5,
+        posture="standing",
+        wme=0,
+        duration=480,
+    )
+    assert rounded.t_re == pytest.approx(37.5)
+
+    rounded_array = phs(
+        tdb=[40, 45],
+        tr=[40, 45],
+        v=[0.3, 0.4],
+        rh=[33.85, 40],
+        met=[2.5, 2.6],
+        clo=[0.5, 0.6],
+        posture=["standing", "standing"],
+        wme=[0, 0],
+        duration=480,
+    )
+    assert rounded_array.t_re == pytest.approx([37.5, 42.5])
+
+    first = phs(
+        tdb=40,
+        tr=40,
+        v=0.3,
+        rh=50,
+        met=2.5,
+        clo=0.5,
+        posture="standing",
+        wme=0,
+        round_output=False,
+        duration=60,
+    )
+    assert first.t_re == pytest.approx(37.843744854847046)
+
+    second = phs(
+        tdb=40,
+        tr=40,
+        v=0.3,
+        rh=50,
+        met=2.5,
+        clo=0.5,
+        posture="standing",
+        wme=0,
+        round_output=False,
+        duration=60,
+        t_sk=first.t_sk,
+        t_cr=first.t_cr,
+        t_re=first.t_re,
+        t_cr_eq=first.t_cr_eq,
+        t_sk_t_cr_wg=first.t_sk_t_cr_wg,
+        sweat_rate_watt=first.sweat_rate_watt,
+        evap_load_wm2_min=first.evap_load_wm2_min,
+    )
+    assert second.t_re == pytest.approx(38.52809746939635)
+
+    example = phs.__doc__.split("Examples", 1)[1]
+    assert "37.843744854847046" in example
+    assert "38.52809746939635" in example
+    assert "# 37.8\n" not in example
+    assert "# 38.5\n" not in example
